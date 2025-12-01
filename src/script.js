@@ -5,41 +5,11 @@ const buttonText = document.getElementById('button-text');
 const resultsSection = document.getElementById('results-section');
 const errorContainer = document.getElementById('error-container');
 
-// --- MOCK DATA ---
-
 /**
  * Generates mock analysis data based on the file name.
  * Includes necessary SVG icons for visual consistency with the React version.
  */
-const mockAnalysis = (fileName) => ({
-  contractTitle: fileName,
-  risks: [
-    {
-      id: 1,
-      type: "High Risk",
-      icon: '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
-      title: "Ambiguous Termination Clause",
-      description: "Section 7.2 allows for unilateral termination with only 5 days' notice, which is below industry standard (30 days).",
-      explanation: "The short notice period significantly increases counterparty risk and operational uncertainty. **Action:** Recommend amending to 30 days.",
-    },
-    {
-      id: 2,
-      type: "Medium Risk",
-      icon: '<svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.332 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
-      title: "Undefined Indemnification Caps",
-      description: "Indemnification caps are not explicitly defined, potentially exposing the client to unlimited liability in certain scenarios.",
-      explanation: "Lack of a financial ceiling on obligations is a major negotiation point. **Action:** Propose a cap equal to the total contract value.",
-    },
-    {
-      id: 3,
-      type: "Low Risk",
-      icon: '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
-      title: "Jurisdiction & Governing Law",
-      description: "Jurisdiction is set to 'Delaware', which may incur slightly higher litigation costs than the client's home state.",
-      explanation: "While acceptable, this is a minor administrative/cost risk. **Action:** No immediate amendment required, but noted for template revision.",
-    },
-  ],
-});
+
 
 // --- UTILITY FUNCTIONS ---
 
@@ -75,21 +45,15 @@ const renderResults = (analysisResult) => {
   let resultsHTML = `
         <div class="mt-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2">
-                Analysis Results: ${analysisResult.contractTitle}
+                Analysis Results
             </h2>
             <div class="space-y-6">
     `;
 
   analysisResult.risks.forEach(risk => {
-    const borderColor = risk.type === 'High Risk' ? 'border-red-500' : risk.type === 'Medium Risk' ? 'border-yellow-500' : 'border-green-500';
-
     resultsHTML += `
-            <div class="flex flex-col bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 border-l-4 ${borderColor}">
-                <div class="flex items-center space-x-3 mb-2">
-                    ${risk.icon}
-                    <h3 class="text-xl font-bold text-gray-800">${risk.title}</h3>
-                </div>
-                <p class="text-sm font-semibold text-gray-600 mb-2">${risk.description}</p>
+            <div class="flex flex-col bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 border-l-4 border-red-500">
+                <p class="text-sm font-semibold text-gray-600 mb-2">${risk.risk}</p>
                 <div class="p-3 bg-gray-50 rounded-lg text-sm border border-gray-200">
                     <p class="font-medium text-gray-700">${risk.explanation}</p>
                 </div>
@@ -97,7 +61,9 @@ const renderResults = (analysisResult) => {
         `;
   });
 
-  resultsHTML += `</div></div>`;
+  resultsHTML += `<br>
+  <h4>Recommendations</h4>
+  <p class="font-small text-gray-700">${analysisResult.revision}</p></div></div>`;
   resultsSection.innerHTML = resultsHTML;
 };
 
@@ -169,68 +135,41 @@ const handleAnalyze = async () => {
   displayError();
   renderResults(null);
 
-  // --- START: Mocked/Simulated Analysis (Functional for now) ---
-  console.log(`Simulating analysis for: ${selectedFile.name}`);
+  // Removed mock analysis block; using real API response.
 
-  // Simulate network delay and processing time
-  setTimeout(() => {
-    try {
-      // Mock a success scenario
-      renderResults(mockAnalysis(selectedFile.name));
 
-      // To simulate an error, uncomment the line below:
-      // throw new Error("The analysis engine timed out while processing the document structure.");
 
-    } catch (e) {
-      displayError(e.message || 'An unknown error occurred during simulation.');
-    } finally {
-      updateButtonState(false, selectedFile);
+
+
+  const formData = new FormData();
+  formData.append('files', selectedFile);
+
+  try {
+    const response = await fetch('http://localhost:3000/analyze', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "Unknown server error format." }));
+      throw new Error(errorData.message || `API analysis failed with status: ${response.status}`);
     }
-  }, 2500); // 2.5 seconds simulation time
-  // --- END: Mocked/Simulated Analysis ---
 
+    const data = await response.json();
 
-  /*
-  // --- START: Example of a real HTTP request using fetch (Commented out) ---
-  
-  // To switch to the real API call, uncomment this block and comment out the simulation block above.
-  
-  // const API_ENDPOINT = 'YOUR_ANALYSIS_API_URL_HERE';
-  
-  // // 1. Prepare data (often using FormData for file uploads)
-  // const formData = new FormData();
-  // formData.append('contract_file', selectedFile);
-  
-  // try {
-  //     const response = await fetch(API_ENDPOINT, {
-  //         method: 'POST',
-  //         // Note: fetch will automatically set the 'Content-Type': 'multipart/form-data' 
-  //         // when using a FormData object, so we omit the headers here.
-  //         body: formData,
-  //     });
+    console.log('data', data[0].risks)
 
-  //     if (!response.ok) {
-  //         // Handle server errors (e.g., 4xx or 5xx responses)
-  //         const errorData = await response.json().catch(() => ({ message: "Unknown server error format." }));
-  //         throw new Error(errorData.message || `API analysis failed with status: ${response.status}`);
-  //     }
+    renderResults({
+      risks: data[0].risks,
+      revision: data[0].revision,
+    });
 
-  //     const data = await response.json();
+  } catch (e) {
+    console.error("Analysis API Call Error:", e);
+    displayError(e.message || 'Failed to connect to the analysis service.');
 
-  //     // Assuming the API returns data structured like mockAnalysis:
-  //     renderResults({
-  //         contractTitle: selectedFile.name,
-  //         risks: data.risks, // Use data returned from the API
-  //     });
-  //     
-  // } catch (e) {
-  //     console.error("Analysis API Call Error:", e);
-  //     displayError(e.message || 'Failed to connect to the analysis service.');
+  } finally {
+    updateButtonState(false, selectedFile);
+  }
 
-  // } finally {
-  //     updateButtonState(false, selectedFile);
-  // }
-  
-  // --- END: Example of a real HTTP request ---
-  */
 };
