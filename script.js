@@ -149,7 +149,7 @@ const onAnalyzeClick = async () => {
   formData.append('files', uploadedFile);
 
   try {
-    const response = await fetch('http://localhost:3000/analyze', {
+    const response = await fetch('https://ai-challenge-api-rgo5.onrender.com/analyze', {
       method: 'POST',
       body: formData
     });
